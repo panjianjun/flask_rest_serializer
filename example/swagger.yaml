@@ -1,0 +1,48 @@
+components:
+  schemas:
+    User:
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+      type: object
+info:
+  title: example-api-swagger
+  version: '1.0'
+openapi: 3.0.0
+paths:
+  /users:
+    description: get_users
+    get:
+      parameters:
+      - in: query
+        name: username
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/User'
+                type: array
+          description: SUCCESS
+  /users/{user_id}:
+    description: get_user_by_id
+    get:
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: SUCCESS
+    parameters:
+    - in: path
+      name: user_id
+      required: true
+      schema:
+        type: integer

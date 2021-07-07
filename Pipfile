@@ -1,0 +1,22 @@
+[[source]]
+url = "https://pypi.doubanio.com/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+flask = "*"
+marshmallow = "*"
+apispec = "*"
+pyyaml = "*"
+
+[dev-packages]
+pytest = "*"
+"pytest-flake8" = "*"
+
+
+[requires]
+python_version = "3"
+
+[scripts]
+lint = "python -m pytest --flake8 flask_http_serializer"
+test = "python -m pytest --cov=flask_http_serializer"

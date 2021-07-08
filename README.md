@@ -1,4 +1,4 @@
-# flask-http-serializer
+# flask-rest-serializer
 
 Make flask request parse and response serialize easier.
 

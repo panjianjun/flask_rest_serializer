@@ -1,8 +1,9 @@
 import functools
 import logging
 
-from flask import Response, abort, jsonify, request
+from flask import Response, current_app, jsonify, request
 from marshmallow import Schema, ValidationError, missing
+from werkzeug.exceptions import BadRequest
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +96,7 @@ def serialize_with_schemas(request_schema=None,
             except ValidationError as e:
                 logger.debug("serialize request with schema %s failed: %s",
                              request_schema_instance, e)
-                abort(400)
+                get_validation_error_handler()(e)
             origin_ret = func(*args, **kwargs)
             if isinstance(origin_ret, Response) or \
                     response_schema_instance is None:
@@ -105,3 +106,24 @@ def serialize_with_schemas(request_schema=None,
         return wrapper
 
     return deco
+
+
+def abort_handler(exc):
+    raise BadRequest(description=exc.normalized_messages)
+
+
+def re_raise_handler(exc):
+    raise exc
+
+
+validation_error_handlers = {
+    "abort": abort_handler,
+    "re_raise": re_raise_handler
+}
+
+
+def get_validation_error_handler():
+    handler = current_app.config.get("REST_SERIALIZER_HANDLER", "abort")
+    if callable(handler):
+        return handler
+    return validation_error_handlers.get(handler, abort_handler)

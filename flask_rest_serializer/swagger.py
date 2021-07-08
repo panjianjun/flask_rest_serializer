@@ -1,7 +1,10 @@
+import json
 import re
+from collections import defaultdict
 
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
+from flask import current_app
 from werkzeug.routing import IntegerConverter, NumberConverter
 
 
@@ -13,48 +16,71 @@ def generate_swagger(app, api_version, doc_path, format="yaml", **options):
 
 
 class SwaggerGenerator:
-    """swagger generator class"""
-
     def __init__(self, app, api_version, doc_path, format="yaml", **options):
         """
         :param app: flask app instance
         :param api_version: api doc version
-        :param doc_dir:
-        :param format:
+        :param doc_path: swagger save path
+        :param format:swagger file format, json or yaml
         """
         self.app = app
-        if doc_path.endswith(format):
-            self.doc_path = doc_path
-        else:
-            self.doc_path = f"{doc_path}.{format}"
+        self.api_version = api_version
+        self.doc_path = doc_path.rstrip("/")
         self.doc_format = format
-        title = options.pop("title", None)
-        self.api_spec = APISpec(
-            title=title or f"{self.app.import_name}-api-swagger",
-            version=api_version,
-            openapi_version="3.0.0",
-            plugins=(MarshmallowPlugin(),),
-            **options
-        )
+        self.api_spec_opts = options
+        self.api_specs = {}
+        self.blueprint_to_apis = defaultdict(list)
+
+    def get_api_spec(self, name):
+        """
+        get api spec for give blueprint or app
+        :param name: blurprint name or app.import_name
+        :return: api_spec
+        """
+        if name not in self.api_specs:
+            self.api_specs[name] = APISpec(
+                title=f"{name}-api",
+                version=self.api_version,
+                openapi_version="3.0.0",
+                plugins=(MarshmallowPlugin(),),
+                **self.api_spec_opts
+            )
+        return self.api_specs[name]
 
     def generate_swagger(self):
-        for rule in self.app.url_map.iter_rules():
-            self.register_rule(rule)
-
-        with open(self.doc_path, "w") as f:
-            f.write(self.api_spec.to_yaml())
+        with self.app.app_context():
+            for rule in self.app.url_map.iter_rules():
+                self.register_rule(rule)
+        for doc_name, apis in self.blueprint_to_apis.items():
+            doc_path = f"{self.doc_path}/{doc_name}.{self.doc_format}"
+            api_spec = self.get_api_spec(doc_name)
+            for api in apis:
+                api_spec.path(**api)
+            with open(doc_path, "w") as f:
+                if self.doc_format == "json":
+                    json.dump(
+                        api_spec.to_dict(), f, indent=4, ensure_ascii=False,
+                        sort_keys=True
+                    )
+                else:
+                    f.write(
+                        api_spec.to_yaml(
+                            yaml_dump_kwargs={"allow_unicode": True}
+                        )
+                    )
 
     def register_rule(self, rule):
         rule_parser = RuleParser(self.app, rule)
         operations = rule_parser.operations
         if not operations:
             return
-
-        self.api_spec.path(
-            path=rule_parser.path,
-            operations=operations,
-            parameters=rule_parser.parameters,
-            description=rule_parser.description
+        self.blueprint_to_apis[rule_parser.doc_file_name].append(
+            dict(
+                path=rule_parser.path,
+                operations=operations,
+                parameters=rule_parser.parameters,
+                description=rule_parser.description
+            )
         )
 
 
@@ -63,6 +89,22 @@ class RuleParser:
         self.app = app
         self.rule = rule
         self.view_func = self.app.view_functions[self.rule.endpoint]
+
+    def get_blueprint_name(self):
+        blueprint_name = self.rule.endpoint.rsplit(".", 1)[0]
+        if blueprint_name in self.app.blueprints:
+            return blueprint_name
+        return self.app.import_name
+
+    @property
+    def doc_file_name(self):
+        if current_app.config.get("REST_SERIALIZER_BLUEPRINT_SEPARATE_DOCS",
+                                  False):
+            view_cls = getattr(self.view_func, "view_class", None)
+            if view_cls and getattr(view_cls, "rest_serialize_doc_name", None):
+                return getattr(view_cls, "rest_serialize_doc_name", None)
+            return self.get_blueprint_name()
+        return self.app.import_name
 
     @property
     def description(self):
@@ -94,14 +136,35 @@ class RuleParser:
 
     @property
     def operations(self):
-        request_schema = getattr(self.view_func, "request_schema", None)
-        response_schema = getattr(self.view_func, "response_schema", None)
+        view_cls = getattr(self.view_func, "view_class", None)
+        if view_cls:
+            operations = {}
+            for method in ("get", "post", "delete", "put", "patch"):
+                handler_func = getattr(view_cls, method, None)
+                if handler_func:
+                    request_schema = getattr(handler_func, "request_schema",
+                                             None)
+                    response_schema = getattr(handler_func,
+                                              "response_schema", None)
+                    method_operation = self._get_operations([method],
+                                                            request_schema,
+                                                            response_schema)
+                    if method_operation:
+                        operations.update(method_operation)
+            return operations
+        else:
+            request_schema = getattr(self.view_func, "request_schema", None)
+            response_schema = getattr(self.view_func, "response_schema", None)
+            return self._get_operations(self.rule.methods, request_schema,
+                                        response_schema)
+
+    @staticmethod
+    def _get_operations(methods, request_schema, response_schema):
         if not any([request_schema, response_schema]):
             return
-
         operations = {}
-        methods = [method.lower() for method in self.rule.methods if
-                   method not in ("OPTIONS", "HEAD")]
+        methods = [method.lower() for method in methods if
+                   method.lower() not in ("options", "head")]
         for method in methods:
             content = {
                 "application/json": {

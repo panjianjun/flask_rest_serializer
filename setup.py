@@ -28,6 +28,6 @@ setup(
         "Operating System :: OS Independent",
     ],
     keywords="flask rest serializer automatically swagger",
-    packages=["flask_http_serializer"],
-    install_requires=["flask", "marshmallow", "api_spec", "yaml"],
+    packages=["flask_rest_serializer"],
+    install_requires=["flask", "marshmallow", "apispec", "pyyaml"],
 )

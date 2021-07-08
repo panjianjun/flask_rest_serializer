@@ -10,7 +10,7 @@ setup(
     description="Make it easy to serialize flask api request and response",
     long_description=readme,
     long_description_content_type='text/markdown',
-    url="https://github.com/panjianjun/flask-rest-serializer",
+    url="https://github.com/panjianjun/flask_rest_serializer",
     author="bayi",
     author_email="bayipan@gmail.com",
     license="Apache Software License",

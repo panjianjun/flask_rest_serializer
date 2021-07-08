@@ -1,9 +1,11 @@
 from flask import Flask
+from flask_restful import Api, Resource
 
-from example.schemas import QueryUserSchema, UserSchema
+from example.schemas import CreateUserSchema, QueryUserSchema, UserSchema
 from flask_rest_serializer import generate_swagger, serialize_with_schemas
 
 app = Flask("example")
+api = Api(app, prefix="/rest")
 
 
 class User:
@@ -35,4 +37,13 @@ def get_user_by_id(user_id):
     return None
 
 
-generate_swagger(app, "1.0", "./swagger.yaml", "yaml")
+@api.resource("/users")
+class UserResource(Resource):
+    @serialize_with_schemas(request_schema=CreateUserSchema,
+                            response_schema=UserSchema)
+    def post(self, username):
+        new_user = User(id=3, username=username)
+        return new_user
+
+
+generate_swagger(app, "1.0", "./", "yaml")

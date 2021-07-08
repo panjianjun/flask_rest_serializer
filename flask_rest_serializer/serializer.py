@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class RequestFullData(dict):
     def get_val_from_request(self, location, attr_name):
         missing_default = missing
-        if location == "args":
+        if location in ("args", "query_string"):
             return request.args.get(attr_name, missing_default)
         elif location == "headers":
             return request.headers.get(attr_name, missing_default)
@@ -109,7 +109,7 @@ def serialize_with_schemas(request_schema=None,
 
 
 def abort_handler(exc):
-    raise BadRequest(description=exc.normalized_messages)
+    raise BadRequest(description=str(exc.messages))
 
 
 def re_raise_handler(exc):
@@ -123,7 +123,8 @@ validation_error_handlers = {
 
 
 def get_validation_error_handler():
-    handler = current_app.config.get("REST_SERIALIZER_HANDLER", "abort")
+    handler = current_app.config.get(
+        "REST_SERIALIZER_VALIDATION_ERROR_HANDLER", "abort")
     if callable(handler):
         return handler
     return validation_error_handlers.get(handler, abort_handler)

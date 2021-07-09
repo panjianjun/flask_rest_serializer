@@ -8,7 +8,7 @@ Make flask request parse and response serialize easier.
 - request serialize and validation (validation is supported by Marshmallow Schema load).
 - field can specify request location to get value , location is one of `headers`, `body`(form or json), `args`). If not set location will be `args` for http GET, DELETE and `body` for http POST, PUT, PATCH. 
 - return Python object(Sqlalchemy Model instance or customer Data Object) directly in your view functions.
-- automatically swagger generation.
+- swagger generation according to request and response schema.
 
 ### Configurations
 
@@ -91,9 +91,3 @@ class UserResource(Resource):
 generate_swagger(app, "1.0", "./", "yaml")
 
 ```
-
-### Example code
-
-- 1.clone repo to local
-- 2.pipenv install
-- 3.cd exmaple & pipenv run flask run

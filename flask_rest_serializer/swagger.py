@@ -52,7 +52,7 @@ class SwaggerGenerator:
             for rule in self.app.url_map.iter_rules():
                 self.register_rule(rule)
         for doc_name, apis in self.blueprint_to_apis.items():
-            doc_path = f"{self.doc_path}/{doc_name}.{self.doc_format}"
+            doc_path = f"{self.doc_path}/{doc_name}_swagger.{self.doc_format}"
             api_spec = self.get_api_spec(doc_name)
             for api in apis:
                 api_spec.path(**api)

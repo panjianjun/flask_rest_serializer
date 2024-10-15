@@ -49,7 +49,7 @@ from flask_rest_serializer import generate_swagger, serialize_with_schemas
 app = Flask("example")
 api = Api(app, prefix="/rest")
 
-
+# custerm class for return in api view
 class User:
     def __init__(self, id, username):
         self.id = id
@@ -61,7 +61,7 @@ user_two = User(id=2, username="two")
 
 users = [user_one, user_two]
 
-
+# usage for typical flask app.route
 @app.route("/users", methods=["GET"])
 @serialize_with_schemas(request_schema=QueryUserSchema,
                         response_schema=UserSchema(many=True))
@@ -78,7 +78,7 @@ def get_user_by_id(user_id):
 
     return None
 
-
+# usage for flask restful resource
 @api.resource("/users")
 class UserResource(Resource):
     @serialize_with_schemas(request_schema=CreateUserSchema,
@@ -87,7 +87,7 @@ class UserResource(Resource):
         new_user = User(id=3, username=username)
         return new_user
 
-
+# to generate swagger doc file, recomment to add this in flask cli
 generate_swagger(app, "1.0", "./", "yaml")
 
 ```

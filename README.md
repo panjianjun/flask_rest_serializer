@@ -37,7 +37,7 @@ class QueryUserSchema(Schema):
 
 class CreateUserSchema(Schema):
     username = fields.String(required=True, allow_none=False,
-                             metadata={"location": "body"})  # if location not set, 
+                             metadata={"location": "body"})  # if location not set, args for GET/DELETE, body for others
 
 # app.py
 from flask import Flask
